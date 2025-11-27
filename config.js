@@ -12,8 +12,8 @@ const CONFIG = {
     // SUPABASE
     // =========================================
     // Obtenir depuis: https://app.supabase.com/project/_/settings/api
-    SUPABASE_URL: 'YOUR_SUPABASE_URL', // ex: https://xxx.supabase.co
-    SUPABASE_ANON_KEY: 'YOUR_SUPABASE_ANON_KEY', // ex: eyJhbGciOiJIUzI1NiIs...
+    SUPABASE_URL: 'https://mbvskiaqfpbbnxhgzpga.supabase.co', // ex: https://xxx.supabase.co
+    SUPABASE_ANON_KEY: 'sb_publishable_71nfmkHtClWUf0tuW6-foQ_Du4clLbr', // ex: eyJhbGciOiJIUzI1NiIs...
 
     // =========================================
     // GOOGLE SHEETS
