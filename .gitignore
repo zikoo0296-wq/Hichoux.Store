@@ -1,0 +1,41 @@
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Build
+dist/
+build/
+.cache/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Secrets
+secrets/
+*.pem
+*.key
+
+# Local config (use config.local.js for local overrides)
+config/config.local.js
