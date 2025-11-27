@@ -3,11 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hichoux Store - Admin Dashboard</title>
+    <meta name="description" content="Hichoux Store - Parfums & Cosmétiques de qualité au Maroc. Livraison rapide, paiement à la livraison.">
+    <meta name="keywords" content="parfum, cosmétique, maroc, livraison, hichoux">
+    <title>Hichoux Store - Parfums & Cosmétiques</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/images/favicon.png">
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- TailwindCSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -15,1096 +21,433 @@
     <!-- Supabase SDK -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-        .page { display: none; }
-        .page.active { display: block; }
-        .sidebar-item { transition: all 0.2s; }
-        .sidebar-item.active { background: #dbeafe; color: #2563eb; }
-        .sidebar-item:hover:not(.active) { background: #f3f4f6; }
-        .toast { animation: slideIn 0.3s ease-out; }
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        .animate-spin { animation: spin 1s linear infinite; }
-    </style>
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="bg-gray-100">
+<body class="bg-gray-50">
 
     <!-- Toast Container -->
-    <div id="toast-container" class="fixed top-4 right-4 z-[100] space-y-2"></div>
+    <div id="toast-container" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
-    <!-- Loading Overlay -->
-    <div id="loading-overlay" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[90] hidden">
-        <div class="bg-white rounded-2xl p-8 flex flex-col items-center">
-            <div class="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p id="loading-text">Chargement...</p>
-        </div>
-    </div>
-
-    <!-- Config Modal -->
-    <div id="config-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[80] p-4">
-        <div class="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl">
-            <div class="flex items-center space-x-3 mb-6">
-                <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center text-white text-xl font-bold">H</div>
-                <div>
-                    <h3 class="text-xl font-bold">Hichoux Store Admin</h3>
-                    <p class="text-gray-500 text-sm">Configuration</p>
+    <!-- Header -->
+    <header class="bg-black text-white sticky top-0 z-40">
+        <div class="container mx-auto px-4">
+            <!-- Top bar -->
+            <div class="hidden md:flex justify-between items-center py-2 text-xs border-b border-gray-800">
+                <div class="flex items-center space-x-4">
+                    <span>📞 <span id="header-phone">0600-000000</span></span>
+                    <span>✉️ <span id="header-email">contact@hichouxstore.ma</span></span>
                 </div>
+                <div>🚚 Livraison gratuite à partir de <span id="header-free-shipping">500</span> DH</div>
             </div>
             
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium mb-1">Supabase URL *</label>
-                    <input type="text" id="config-url" placeholder="https://xxx.supabase.co" class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Supabase Anon Key *</label>
-                    <input type="text" id="config-key" placeholder="eyJhbGciOiJIUzI1NiIs..." class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium mb-1">Google Apps Script URL</label>
-                    <input type="text" id="config-gas" placeholder="https://script.google.com/macros/s/xxx/exec" class="w-full px-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-                </div>
-            </div>
-            
-            <div class="bg-blue-50 rounded-xl p-4 mt-4">
-                <p class="text-sm text-blue-800">💡 Obtenir ces informations depuis votre <a href="https://supabase.com" target="_blank" class="underline font-medium">dashboard Supabase</a> → Settings → API</p>
-            </div>
-            
-            <div class="flex space-x-3 mt-6">
-                <button onclick="skipConfig()" class="flex-1 px-4 py-2.5 border-2 rounded-xl hover:bg-gray-50 transition font-medium">Mode Demo</button>
-                <button onclick="saveConfig()" class="flex-1 px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition font-medium">Connecter</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Order Detail Modal -->
-    <div id="order-modal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[70] p-4 hidden">
-        <div class="bg-white rounded-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden flex flex-col shadow-2xl">
-            <div class="p-6 border-b flex items-center justify-between">
-                <h3 class="text-xl font-bold">Commande <span id="modal-order-id"></span></h3>
-                <button onclick="closeOrderModal()" class="p-2 hover:bg-gray-100 rounded-lg transition text-xl">✕</button>
-            </div>
-            <div id="modal-content" class="p-6 overflow-y-auto flex-1"></div>
-            <div id="modal-actions" class="p-4 bg-gray-50 border-t flex flex-wrap gap-2 justify-end"></div>
-        </div>
-    </div>
-
-    <!-- Main Layout -->
-    <div class="flex h-screen">
-        <!-- Sidebar -->
-        <aside class="w-64 bg-white border-r flex flex-col shrink-0">
-            <div class="p-6 border-b">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center text-white font-bold shadow-lg">H</div>
-                    <div>
-                        <h1 class="font-bold text-gray-900">Hichoux Store</h1>
-                        <p class="text-xs" id="connection-status"><span class="text-gray-400">● Mode Demo</span></p>
-                    </div>
-                </div>
-            </div>
-
-            <nav class="flex-1 p-4 space-y-1">
-                <button onclick="showPage('dashboard')" data-page="dashboard" class="sidebar-item active w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>📊</span><span>Dashboard</span></span>
-                </button>
-                <button onclick="showPage('orders')" data-page="orders" class="sidebar-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>📦</span><span>Commandes</span></span>
-                    <span class="badge-orders bg-red-500 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
-                </button>
-                <button onclick="showPage('confirmation')" data-page="confirmation" class="sidebar-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>📞</span><span>Confirmation</span></span>
-                    <span class="badge-confirmation bg-red-500 text-white text-xs px-2 py-0.5 rounded-full hidden">0</span>
-                </button>
-                <button onclick="showPage('shipping')" data-page="shipping" class="sidebar-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>🏷️</span><span>Shipping Labels</span></span>
-                </button>
-                <button onclick="showPage('products')" data-page="products" class="sidebar-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>🛍️</span><span>Produits</span></span>
-                </button>
-                <button onclick="showPage('settings')" data-page="settings" class="sidebar-item w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-medium text-left">
-                    <span class="flex items-center space-x-3"><span>⚙️</span><span>Paramètres</span></span>
-                </button>
-            </nav>
-
-            <div class="p-4 border-t">
-                <div class="flex items-center space-x-3">
-                    <div class="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center text-blue-600 font-semibold">A</div>
-                    <div>
-                        <p class="text-sm font-medium">Admin</p>
-                        <p class="text-xs text-gray-500">Administrateur</p>
-                    </div>
-                </div>
-            </div>
-        </aside>
-
-        <!-- Main Content -->
-        <main class="flex-1 overflow-auto">
-            <div class="p-8">
+            <!-- Main header -->
+            <div class="flex items-center justify-between py-4">
+                <a href="#" onclick="showPage('home')" class="flex items-center space-x-2">
+                    <div class="w-10 h-10 bg-gold rounded-full flex items-center justify-center text-black font-bold text-xl">H</div>
+                    <span class="font-display text-2xl font-bold" id="header-store-name">Hichoux Store</span>
+                </a>
                 
-                <!-- ==================== DASHBOARD PAGE ==================== -->
-                <div id="page-dashboard" class="page active">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
-                            <p class="text-gray-500">Vue d'ensemble de votre activité</p>
-                        </div>
-                        <p class="text-sm text-gray-500" id="current-date"></p>
-                    </div>
-
-                    <!-- Stats Cards -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8" id="stats-cards">
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 text-sm">Nouvelles</p>
-                                    <p class="text-3xl font-bold mt-1" id="stat-new">0</p>
-                                    <p class="text-xs text-gray-400 mt-1">En attente</p>
-                                </div>
-                                <div class="w-12 h-12 bg-yellow-100 text-yellow-600 rounded-xl flex items-center justify-center text-xl">📥</div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 text-sm">Confirmées</p>
-                                    <p class="text-3xl font-bold mt-1" id="stat-confirmed">0</p>
-                                    <p class="text-xs text-gray-400 mt-1">Prêtes</p>
-                                </div>
-                                <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center text-xl">✓</div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 text-sm">Expédiées</p>
-                                    <p class="text-3xl font-bold mt-1" id="stat-shipped">0</p>
-                                    <p class="text-xs text-gray-400 mt-1">En transit</p>
-                                </div>
-                                <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center text-xl">🚚</div>
-                            </div>
-                        </div>
-                        <div class="bg-white rounded-2xl p-6 shadow-sm border">
-                            <div class="flex justify-between items-start">
-                                <div>
-                                    <p class="text-gray-500 text-sm">Livrées</p>
-                                    <p class="text-3xl font-bold mt-1" id="stat-delivered">0</p>
-                                    <p class="text-xs text-green-600 mt-1" id="stat-revenue">0 DH</p>
-                                </div>
-                                <div class="w-12 h-12 bg-green-100 text-green-600 rounded-xl flex items-center justify-center text-xl">✅</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Recent Orders -->
-                    <div class="bg-white rounded-2xl shadow-sm border">
-                        <div class="p-6 border-b flex justify-between items-center">
-                            <h3 class="font-semibold text-gray-900">Commandes Récentes</h3>
-                            <button onclick="showPage('orders')" class="text-blue-600 text-sm hover:underline">Voir tout →</button>
-                        </div>
-                        <div class="overflow-x-auto">
-                            <table class="w-full">
-                                <thead class="bg-gray-50">
-                                    <tr>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">ID</th>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Client</th>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Ville</th>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Total</th>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                                        <th class="px-6 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="recent-orders-table" class="divide-y"></tbody>
-                            </table>
-                        </div>
-                    </div>
+                <nav class="hidden md:flex items-center space-x-8">
+                    <a href="#" onclick="showPage('home')" class="hover:text-gold transition">Accueil</a>
+                    <a href="#" onclick="showPage('catalog')" class="hover:text-gold transition">Catalogue</a>
+                    <a href="#" onclick="showPage('tracking')" class="hover:text-gold transition">Suivi Commande</a>
+                    <a href="#" onclick="showPage('contact')" class="hover:text-gold transition">Contact</a>
+                </nav>
+                
+                <div class="flex items-center space-x-4">
+                    <button onclick="showPage('cart')" class="relative p-2 hover:text-gold transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+                        <span id="cart-count" class="cart-badge absolute -top-1 -right-1 w-5 h-5 bg-gold text-black text-xs font-bold rounded-full flex items-center justify-center hidden">0</span>
+                    </button>
+                    <button onclick="toggleMobileMenu()" class="md:hidden p-2">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/></svg>
+                    </button>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Mobile menu -->
+        <div id="mobile-menu" class="hidden md:hidden bg-gray-900 py-4">
+            <nav class="container mx-auto px-4 space-y-4">
+                <a href="#" onclick="showPage('home'); toggleMobileMenu()" class="block hover:text-gold">Accueil</a>
+                <a href="#" onclick="showPage('catalog'); toggleMobileMenu()" class="block hover:text-gold">Catalogue</a>
+                <a href="#" onclick="showPage('tracking'); toggleMobileMenu()" class="block hover:text-gold">Suivi Commande</a>
+                <a href="#" onclick="showPage('contact'); toggleMobileMenu()" class="block hover:text-gold">Contact</a>
+            </nav>
+        </div>
+    </header>
 
-                <!-- ==================== ORDERS PAGE ==================== -->
-                <div id="page-orders" class="page">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">📦 Commandes</h2>
-                            <p class="text-gray-500">Gérez toutes vos commandes</p>
-                        </div>
-                        <button onclick="refreshData()" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center space-x-2">
-                            <span>🔄</span><span>Actualiser</span>
-                        </button>
-                    </div>
-
-                    <!-- Filters -->
-                    <div class="flex flex-wrap gap-4 mb-6">
-                        <div class="relative flex-1 max-w-md">
-                            <svg class="w-5 h-5 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                            <input type="text" id="search-orders" placeholder="Rechercher par nom, téléphone, ID..." class="w-full pl-10 pr-4 py-2.5 border rounded-xl focus:ring-2 focus:ring-blue-500" onkeyup="filterOrders()">
-                        </div>
-                        <select id="filter-status" class="px-4 py-2.5 border rounded-xl bg-white focus:ring-2 focus:ring-blue-500" onchange="filterOrders()">
-                            <option value="all">Tous les statuts</option>
-                            <option value="new">Nouvelles</option>
-                            <option value="confirmed">Confirmées</option>
-                            <option value="shipped">Expédiées</option>
-                            <option value="delivered">Livrées</option>
-                            <option value="cancelled">Annulées</option>
-                        </select>
-                    </div>
-
-                    <!-- Orders Table -->
-                    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Commande</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Client</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Téléphone</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Ville</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Total</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Tracking</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="orders-table" class="divide-y"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- ==================== CONFIRMATION PAGE ==================== -->
-                <div id="page-confirmation" class="page">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">📞 Confirmation</h2>
-                            <p class="text-gray-500" id="pending-count">0 commandes en attente</p>
-                        </div>
-                    </div>
-
-                    <div id="confirmation-list" class="space-y-4"></div>
-
-                    <div id="all-confirmed" class="hidden bg-white rounded-2xl p-12 text-center shadow-sm border">
-                        <div class="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-4xl">✓</div>
-                        <h3 class="text-xl font-semibold text-gray-900">Tout est confirmé !</h3>
-                        <p class="text-gray-500 mt-2">Aucune commande en attente de confirmation</p>
-                    </div>
-                </div>
-
-                <!-- ==================== SHIPPING PAGE ==================== -->
-                <div id="page-shipping" class="page">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">🏷️ Shipping Labels</h2>
-                            <p class="text-gray-500">Bordereaux d'expédition</p>
-                        </div>
-                        <button onclick="createShippingLabel()" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center space-x-2">
-                            <span>+</span><span>Créer Bordereau</span>
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">BL ID</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Transporteur</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Commandes</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Montant</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Statut</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Paiement</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="shipping-table" class="divide-y"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- ==================== PRODUCTS PAGE ==================== -->
-                <div id="page-products" class="page">
-                    <div class="flex justify-between items-center mb-6">
-                        <div>
-                            <h2 class="text-2xl font-bold text-gray-900">🛍️ Produits</h2>
-                            <p class="text-gray-500" id="products-count">0 produits</p>
-                        </div>
-                        <button onclick="showToast('Fonctionnalité à venir', 'info')" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition flex items-center space-x-2">
-                            <span>+</span><span>Ajouter</span>
-                        </button>
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                        <table class="w-full">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Produit</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">SKU</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Catégorie</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Prix</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Stock</th>
-                                    <th class="px-6 py-4 text-left text-xs font-semibold text-gray-500 uppercase">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="products-table" class="divide-y"></tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- ==================== SETTINGS PAGE ==================== -->
-                <div id="page-settings" class="page">
-                    <div class="mb-6">
-                        <h2 class="text-2xl font-bold text-gray-900">⚙️ Paramètres</h2>
-                        <p class="text-gray-500">Configuration de votre store</p>
-                    </div>
-
-                    <div class="bg-white rounded-2xl shadow-sm border overflow-hidden">
-                        <div class="p-6 border-b flex items-center space-x-4">
-                            <div class="w-16 h-16 bg-blue-600 rounded-2xl flex items-center justify-center text-white text-3xl font-bold">H</div>
-                            <div>
-                                <h3 class="text-xl font-bold text-gray-900">Hichoux Store</h3>
-                                <span class="px-2 py-0.5 bg-blue-100 text-blue-700 text-xs rounded-full">Store</span>
-                            </div>
-                        </div>
-
-                        <div class="p-6 space-y-6">
-                            <!-- Database -->
-                            <div class="border-b pb-6">
-                                <h4 class="font-semibold text-gray-900 mb-4">🗄️ Database (Supabase)</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">URL</label>
-                                        <input type="text" id="settings-supabase-url" class="w-full px-4 py-2.5 border rounded-xl bg-gray-50" readonly>
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Statut</label>
-                                        <p id="settings-supabase-status" class="px-4 py-2.5 bg-gray-100 rounded-xl">Non connecté</p>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Google Sheets -->
-                            <div class="border-b pb-6">
-                                <h4 class="font-semibold text-gray-900 mb-4">📊 Google Sheets</h4>
-                                <div class="bg-green-50 border border-green-200 rounded-xl p-4">
-                                    <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                                        <div>
-                                            <p class="font-medium text-green-800">✓ Sheet Connected</p>
-                                            <a href="https://docs.google.com/spreadsheets/d/1qKkOSPisPkqUQEkH-stKoUaEo1d9e63pVcV1iU9yvHw/edit" target="_blank" class="text-blue-600 text-sm hover:underline">Open Sheet ↗</a>
-                                            <p class="text-xs text-green-600 mt-1" id="last-sync">Last sync: -</p>
-                                        </div>
-                                        <button onclick="syncToGoogleSheet()" class="px-4 py-2 bg-teal-500 text-white rounded-xl hover:bg-teal-600 transition">
-                                            🔄 Sync Now
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <!-- Digylog -->
-                            <div class="border-b pb-6">
-                                <h4 class="font-semibold text-gray-900 mb-4">🚚 API Digylog</h4>
-                                <div class="space-y-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Bearer Token</label>
-                                        <input type="password" id="digylog-token" placeholder="Votre token API" class="w-full px-4 py-2.5 border rounded-xl">
-                                    </div>
-                                    <button onclick="showToast('Test en cours...', 'info')" class="px-4 py-2 bg-purple-500 text-white rounded-xl hover:bg-purple-600 transition">
-                                        Tester la connexion
-                                    </button>
-                                </div>
-                            </div>
-
-                            <!-- Store Info -->
-                            <div>
-                                <h4 class="font-semibold text-gray-900 mb-4">🏪 Informations Store</h4>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Nom du Store</label>
-                                        <input type="text" id="store-name" value="Hichoux Store" class="w-full px-4 py-2.5 border rounded-xl">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Téléphone</label>
-                                        <input type="text" id="store-phone" value="0600000000" class="w-full px-4 py-2.5 border rounded-xl">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">WhatsApp</label>
-                                        <input type="text" id="store-whatsapp" value="212600000000" class="w-full px-4 py-2.5 border rounded-xl">
-                                    </div>
-                                    <div>
-                                        <label class="block text-sm font-medium text-gray-700 mb-1">Frais livraison (DH)</label>
-                                        <input type="number" id="shipping-cost" value="30" class="w-full px-4 py-2.5 border rounded-xl">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="p-6 bg-gray-50 border-t flex justify-between items-center">
-                            <button onclick="document.getElementById('config-modal').classList.remove('hidden')" class="text-blue-600 hover:underline text-sm">Modifier la configuration</button>
-                            <button onclick="saveSettings()" class="px-6 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition">
-                                💾 Sauvegarder
+    <!-- Main Content -->
+    <main id="main-content">
+        <!-- Home Page -->
+        <div id="page-home" class="page active">
+            <!-- Hero Section -->
+            <section class="relative bg-black text-white py-20 md:py-32 overflow-hidden">
+                <div class="hero-gradient absolute inset-0"></div>
+                <div class="container mx-auto px-4 relative z-10">
+                    <div class="max-w-2xl animate-fadeIn">
+                        <p class="text-gold uppercase tracking-widest mb-4">Nouvelle Collection</p>
+                        <h1 class="font-display text-4xl md:text-6xl font-bold mb-6 leading-tight">Découvrez l'Excellence des Parfums</h1>
+                        <p class="text-gray-300 text-lg mb-8">Des fragrances uniques qui révèlent votre personnalité. Livraison rapide partout au Maroc.</p>
+                        <div class="flex flex-wrap gap-4">
+                            <button onclick="showPage('catalog')" class="btn-gold px-8 py-4 rounded-full font-semibold">
+                                Voir le Catalogue
+                            </button>
+                            <button onclick="showPage('tracking')" class="border-2 border-gold text-gold px-8 py-4 rounded-full font-semibold hover:bg-gold hover:text-black transition">
+                                Suivre ma Commande
                             </button>
                         </div>
                     </div>
                 </div>
+            </section>
 
-            </div>
-        </main>
-    </div>
+            <!-- Features -->
+            <section class="py-12 bg-white">
+                <div class="container mx-auto px-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-8">
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">🚚</div>
+                            <h3 class="font-semibold mb-2">Livraison Rapide</h3>
+                            <p class="text-gray-600 text-sm">24-48h partout au Maroc</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">💰</div>
+                            <h3 class="font-semibold mb-2">Paiement à la Livraison</h3>
+                            <p class="text-gray-600 text-sm">Cash on Delivery</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">✨</div>
+                            <h3 class="font-semibold mb-2">Produits Authentiques</h3>
+                            <p class="text-gray-600 text-sm">Qualité garantie</p>
+                        </div>
+                        <div class="text-center">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+                            <h3 class="font-semibold mb-2">Support Client</h3>
+                            <p class="text-gray-600 text-sm">WhatsApp disponible</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
 
-    <!-- JavaScript -->
-    <script>
-        // =============================================
-        // CONFIGURATION
-        // =============================================
-        const CONFIG = {
-            SUPABASE_URL: '',
-            SUPABASE_ANON_KEY: '',
-            GOOGLE_SCRIPT_URL: '',
-            CURRENCY: 'DH'
-        };
+            <!-- Featured Products -->
+            <section class="py-16 bg-gray-50">
+                <div class="container mx-auto px-4">
+                    <div class="text-center mb-12">
+                        <h2 class="font-display text-3xl md:text-4xl font-bold mb-4">Produits Vedettes</h2>
+                        <p class="text-gray-600">Nos parfums les plus appréciés</p>
+                    </div>
+                    <div id="featured-products" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <!-- Filled by JS -->
+                        <div class="skeleton h-96 rounded-2xl"></div>
+                        <div class="skeleton h-96 rounded-2xl"></div>
+                        <div class="skeleton h-96 rounded-2xl"></div>
+                    </div>
+                    <div class="text-center mt-12">
+                        <button onclick="showPage('catalog')" class="btn-gold px-8 py-3 rounded-full font-semibold">
+                            Voir Tous les Produits
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-        // =============================================
-        // STATE
-        // =============================================
-        let orders = [];
-        let products = [];
-        let shippingLabels = [];
-        let supabaseClient = null;
-
-        // Demo Data
-        const demoOrders = [
-            { id: '1', order_number: 'HCX001234', customer_name: 'Ahmed Benali', customer_phone: '0661234567', shipping_address: 'Rue Hassan II, N°45', shipping_city: 'Casablanca', total: 300, status: 'new', created_at: '2025-11-27T10:00:00', order_items: [{ product_name: 'Parfum Royal Oud', quantity: 2, unit_price: 150 }] },
-            { id: '2', order_number: 'HCX001235', customer_name: 'Fatima Zahra', customer_phone: '0677889900', shipping_address: 'Avenue Mohammed V, Appt 12', shipping_city: 'Rabat', total: 200, status: 'new', created_at: '2025-11-27T11:00:00', order_items: [{ product_name: 'Essence de Rose', quantity: 1, unit_price: 200 }] },
-            { id: '3', order_number: 'HCX001236', customer_name: 'Youssef Alami', customer_phone: '0655443322', shipping_address: 'Quartier Gueliz', shipping_city: 'Marrakech', total: 360, status: 'new', notes: 'Client VIP', created_at: '2025-11-27T09:00:00', order_items: [{ product_name: 'Amber Nights', quantity: 3, unit_price: 120 }] },
-            { id: '4', order_number: 'HCX001237', customer_name: 'Khadija Mansouri', customer_phone: '0688776655', shipping_address: 'Hay Mohammadi', shipping_city: 'Agadir', total: 150, status: 'confirmed', created_at: '2025-11-26T14:00:00', order_items: [{ product_name: 'Parfum Royal Oud', quantity: 1, unit_price: 150 }] },
-            { id: '5', order_number: 'HCX001238', customer_name: 'Omar Tazi', customer_phone: '0699887766', shipping_address: 'Centre ville', shipping_city: 'Fès', total: 360, status: 'confirmed', created_at: '2025-11-26T10:00:00', order_items: [{ product_name: 'Musk Premium', quantity: 2, unit_price: 180 }] },
-            { id: '6', order_number: 'HCX001239', customer_name: 'Sara Bennani', customer_phone: '0612345678', shipping_address: 'Hay Riad', shipping_city: 'Rabat', total: 200, status: 'shipped', tracking_number: 'S2AD5795M', created_at: '2025-11-25T10:00:00', order_items: [{ product_name: 'Essence de Rose', quantity: 1, unit_price: 200 }] },
-            { id: '7', order_number: 'HCX001240', customer_name: 'Mohammed Idrissi', customer_phone: '0633221100', shipping_address: 'Zone Industrielle', shipping_city: 'Tanger', total: 240, status: 'delivered', tracking_number: 'S6AA79F4A', created_at: '2025-11-24T10:00:00', order_items: [{ product_name: 'Amber Nights', quantity: 2, unit_price: 120 }] },
-        ];
-
-        const demoProducts = [
-            { id: '1', sku: 'PARFUM-001', name: 'Parfum Royal Oud', price: 150, stock: 45, category: { name: 'Homme' } },
-            { id: '2', sku: 'PARFUM-002', name: 'Essence de Rose', price: 200, stock: 32, category: { name: 'Femme' } },
-            { id: '3', sku: 'PARFUM-003', name: 'Amber Nights', price: 120, stock: 28, category: { name: 'Unisexe' } },
-            { id: '4', sku: 'PARFUM-004', name: 'Musk Premium', price: 180, stock: 15, category: { name: 'Homme' } },
-            { id: '5', sku: 'COSM-001', name: 'Crème Hydratante', price: 89, stock: 60, category: { name: 'Cosmétique' } },
-        ];
-
-        const demoLabels = [
-            { id: '1', label_number: 'BL682045', carrier: 'digylog', orders_count: 4, total_amount: 1200, status: 'completed', payment_status: 'unpaid' },
-            { id: '2', label_number: 'BL682007', carrier: 'digylog', orders_count: 6, total_amount: 1800, status: 'completed', payment_status: 'paid' },
-        ];
-
-        // =============================================
-        // INITIALIZATION
-        // =============================================
-        document.addEventListener('DOMContentLoaded', function() {
-            loadSavedConfig();
-            
-            if (CONFIG.SUPABASE_URL && CONFIG.SUPABASE_ANON_KEY) {
-                document.getElementById('config-modal').classList.add('hidden');
-                initSupabase();
-            }
-            
-            updateDate();
-        });
-
-        function loadSavedConfig() {
-            CONFIG.SUPABASE_URL = localStorage.getItem('hichoux_supabase_url') || '';
-            CONFIG.SUPABASE_ANON_KEY = localStorage.getItem('hichoux_supabase_key') || '';
-            CONFIG.GOOGLE_SCRIPT_URL = localStorage.getItem('hichoux_gas_url') || '';
-            
-            document.getElementById('config-url').value = CONFIG.SUPABASE_URL;
-            document.getElementById('config-key').value = CONFIG.SUPABASE_ANON_KEY;
-            document.getElementById('config-gas').value = CONFIG.GOOGLE_SCRIPT_URL;
-        }
-
-        function saveConfig() {
-            const url = document.getElementById('config-url').value.trim();
-            const key = document.getElementById('config-key').value.trim();
-            const gas = document.getElementById('config-gas').value.trim();
-
-            if (!url || !key) {
-                showToast('URL et Anon Key requis', 'error');
-                return;
-            }
-
-            localStorage.setItem('hichoux_supabase_url', url);
-            localStorage.setItem('hichoux_supabase_key', key);
-            localStorage.setItem('hichoux_gas_url', gas);
-
-            CONFIG.SUPABASE_URL = url;
-            CONFIG.SUPABASE_ANON_KEY = key;
-            CONFIG.GOOGLE_SCRIPT_URL = gas;
-
-            document.getElementById('config-modal').classList.add('hidden');
-            initSupabase();
-            showToast('Configuration sauvegardée!');
-        }
-
-        function skipConfig() {
-            document.getElementById('config-modal').classList.add('hidden');
-            useDemoMode();
-        }
-
-        function useDemoMode() {
-            orders = [...demoOrders];
-            products = [...demoProducts];
-            shippingLabels = [...demoLabels];
-            
-            document.getElementById('connection-status').innerHTML = '<span class="text-gray-400">● Mode Demo</span>';
-            
-            updateUI();
-            showToast('Mode Demo activé', 'info');
-        }
-
-        async function initSupabase() {
-            try {
-                supabaseClient = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
-                document.getElementById('connection-status').innerHTML = '<span class="text-green-500">● Connecté</span>';
-                
-                await loadDataFromSupabase();
-                updateUI();
-                showToast('Connecté à Supabase!');
-            } catch (error) {
-                console.error('Supabase error:', error);
-                showToast('Erreur de connexion', 'error');
-                useDemoMode();
-            }
-        }
-
-        async function loadDataFromSupabase() {
-            try {
-                const [ordersRes, productsRes] = await Promise.all([
-                    supabaseClient.from('orders').select('*, order_items(*)').order('created_at', { ascending: false }),
-                    supabaseClient.from('products').select('*, category:categories(id, name)').eq('is_active', true)
-                ]);
-
-                if (ordersRes.data) orders = ordersRes.data;
-                if (productsRes.data) products = productsRes.data;
-            } catch (error) {
-                console.error('Load error:', error);
-                useDemoMode();
-            }
-        }
-
-        function refreshData() {
-            if (supabaseClient) {
-                loadDataFromSupabase().then(() => {
-                    updateUI();
-                    showToast('Données actualisées');
-                });
-            } else {
-                showToast('Mode Demo - pas de données à actualiser', 'info');
-            }
-        }
-
-        // =============================================
-        // UI FUNCTIONS
-        // =============================================
-        function showToast(message, type = 'success') {
-            const container = document.getElementById('toast-container');
-            const colors = { success: 'bg-green-500', error: 'bg-red-500', info: 'bg-blue-500', warning: 'bg-yellow-500' };
-            const icons = { success: '✓', error: '✕', info: 'ℹ', warning: '⚠' };
-
-            const toast = document.createElement('div');
-            toast.className = `toast ${colors[type]} text-white px-6 py-3 rounded-xl shadow-lg flex items-center space-x-2`;
-            toast.innerHTML = `<span>${icons[type]}</span><span>${message}</span>`;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
-        }
-
-        function showLoading(text = 'Chargement...') {
-            document.getElementById('loading-text').textContent = text;
-            document.getElementById('loading-overlay').classList.remove('hidden');
-        }
-
-        function hideLoading() {
-            document.getElementById('loading-overlay').classList.add('hidden');
-        }
-
-        function updateDate() {
-            const el = document.getElementById('current-date');
-            if (el) {
-                el.textContent = new Date().toLocaleDateString('fr-FR', {
-                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-                });
-            }
-        }
-
-        // =============================================
-        // NAVIGATION
-        // =============================================
-        function showPage(pageId) {
-            // Hide all pages
-            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            
-            // Show selected page
-            const page = document.getElementById('page-' + pageId);
-            if (page) {
-                page.classList.add('active');
-            }
-
-            // Update sidebar
-            document.querySelectorAll('.sidebar-item').forEach(s => s.classList.remove('active'));
-            const navBtn = document.querySelector(`[data-page="${pageId}"]`);
-            if (navBtn) {
-                navBtn.classList.add('active');
-            }
-
-            // Render page-specific content
-            if (pageId === 'confirmation') renderConfirmation();
-            if (pageId === 'orders') renderOrdersTable();
-            if (pageId === 'products') renderProducts();
-            if (pageId === 'shipping') renderShipping();
-            if (pageId === 'settings') populateSettings();
-        }
-
-        // =============================================
-        // UPDATE UI
-        // =============================================
-        function updateUI() {
-            updateStats();
-            renderRecentOrders();
-            updateBadges();
-        }
-
-        function updateStats() {
-            const stats = {
-                new: orders.filter(o => o.status === 'new').length,
-                confirmed: orders.filter(o => o.status === 'confirmed').length,
-                shipped: orders.filter(o => o.status === 'shipped').length,
-                delivered: orders.filter(o => o.status === 'delivered').length,
-                revenue: orders.filter(o => o.status === 'delivered').reduce((s, o) => s + (o.total || 0), 0)
-            };
-
-            document.getElementById('stat-new').textContent = stats.new;
-            document.getElementById('stat-confirmed').textContent = stats.confirmed;
-            document.getElementById('stat-shipped').textContent = stats.shipped;
-            document.getElementById('stat-delivered').textContent = stats.delivered;
-            document.getElementById('stat-revenue').textContent = stats.revenue + ' ' + CONFIG.CURRENCY;
-        }
-
-        function updateBadges() {
-            const newCount = orders.filter(o => o.status === 'new').length;
-            
-            document.querySelectorAll('.badge-orders, .badge-confirmation').forEach(badge => {
-                badge.textContent = newCount;
-                badge.classList.toggle('hidden', newCount === 0);
-            });
-        }
-
-        function getStatusBadge(status) {
-            const statuses = {
-                new: { label: 'Nouvelle', color: 'bg-yellow-100 text-yellow-800' },
-                confirmed: { label: 'Confirmée', color: 'bg-blue-100 text-blue-800' },
-                shipped: { label: 'Expédiée', color: 'bg-purple-100 text-purple-800' },
-                delivered: { label: 'Livrée', color: 'bg-green-100 text-green-800' },
-                cancelled: { label: 'Annulée', color: 'bg-red-100 text-red-800' },
-                completed: { label: 'Terminé', color: 'bg-green-100 text-green-800' },
-                unpaid: { label: 'Non payé', color: 'bg-red-100 text-red-800' },
-                paid: { label: 'Payé', color: 'bg-green-100 text-green-800' }
-            };
-            const config = statuses[status] || { label: status, color: 'bg-gray-100 text-gray-800' };
-            return `<span class="px-3 py-1 rounded-full text-xs font-semibold ${config.color}">${config.label}</span>`;
-        }
-
-        function formatDate(dateStr) {
-            if (!dateStr) return '-';
-            return new Date(dateStr).toLocaleDateString('fr-FR', {
-                day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-            });
-        }
-
-        // =============================================
-        // RECENT ORDERS (DASHBOARD)
-        // =============================================
-        function renderRecentOrders() {
-            const container = document.getElementById('recent-orders-table');
-            if (!container) return;
-
-            container.innerHTML = orders.slice(0, 5).map(o => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <p class="font-medium">${o.order_number || o.id}</p>
-                        <p class="text-xs text-gray-500">${formatDate(o.created_at)}</p>
-                    </td>
-                    <td class="px-6 py-4">${o.customer_name}</td>
-                    <td class="px-6 py-4">${o.shipping_city}</td>
-                    <td class="px-6 py-4 font-semibold">${o.total} ${CONFIG.CURRENCY}</td>
-                    <td class="px-6 py-4">${getStatusBadge(o.status)}</td>
-                    <td class="px-6 py-4">
-                        <button onclick="openOrderModal('${o.id}')" class="text-blue-600 hover:underline text-sm">Voir</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // =============================================
-        // ORDERS TABLE
-        // =============================================
-        function renderOrdersTable() {
-            filterOrders();
-        }
-
-        function filterOrders() {
-            const search = (document.getElementById('search-orders')?.value || '').toLowerCase();
-            const status = document.getElementById('filter-status')?.value || 'all';
-
-            const filtered = orders.filter(o => {
-                const matchSearch = !search ||
-                    o.customer_name?.toLowerCase().includes(search) ||
-                    o.customer_phone?.includes(search) ||
-                    o.order_number?.toLowerCase().includes(search);
-                const matchStatus = status === 'all' || o.status === status;
-                return matchSearch && matchStatus;
-            });
-
-            const container = document.getElementById('orders-table');
-            if (!container) return;
-
-            container.innerHTML = filtered.map(o => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4">
-                        <p class="font-medium">${o.order_number || o.id}</p>
-                        <p class="text-xs text-gray-500">${formatDate(o.created_at)}</p>
-                    </td>
-                    <td class="px-6 py-4">${o.customer_name}</td>
-                    <td class="px-6 py-4">${o.customer_phone}</td>
-                    <td class="px-6 py-4">${o.shipping_city}</td>
-                    <td class="px-6 py-4 font-semibold">${o.total} ${CONFIG.CURRENCY}</td>
-                    <td class="px-6 py-4">${getStatusBadge(o.status)}</td>
-                    <td class="px-6 py-4 font-mono text-sm ${o.tracking_number ? 'text-blue-600' : 'text-gray-400'}">${o.tracking_number || '-'}</td>
-                    <td class="px-6 py-4">
-                        <button onclick="openOrderModal('${o.id}')" class="text-blue-600 hover:underline text-sm">Voir</button>
-                    </td>
-                </tr>
-            `).join('');
-        }
-
-        // =============================================
-        // CONFIRMATION
-        // =============================================
-        function renderConfirmation() {
-            const pending = orders.filter(o => o.status === 'new');
-            document.getElementById('pending-count').textContent = `${pending.length} commandes en attente`;
-
-            const listContainer = document.getElementById('confirmation-list');
-            const emptyContainer = document.getElementById('all-confirmed');
-
-            if (pending.length === 0) {
-                listContainer.innerHTML = '';
-                emptyContainer.classList.remove('hidden');
-            } else {
-                emptyContainer.classList.add('hidden');
-                listContainer.innerHTML = pending.map(o => `
-                    <div class="bg-white rounded-2xl p-6 shadow-sm border">
-                        <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-6">
-                            <div class="flex-1">
-                                <div class="flex flex-wrap items-center gap-3 mb-4">
-                                    <span class="text-lg font-bold">${o.order_number || o.id}</span>
-                                    ${getStatusBadge(o.status)}
-                                    ${o.notes ? `<span class="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">${o.notes}</span>` : ''}
+        <!-- Catalog Page -->
+        <div id="page-catalog" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4">
+                    <div class="flex flex-col md:flex-row gap-8">
+                        <!-- Filters Sidebar -->
+                        <aside class="w-full md:w-64 shrink-0">
+                            <div class="bg-white rounded-2xl p-6 shadow-sm sticky top-24">
+                                <h3 class="font-semibold text-lg mb-4">Catégories</h3>
+                                <div id="category-filters" class="space-y-2">
+                                    <!-- Filled by JS -->
                                 </div>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-                                    <div><p class="text-xs text-gray-500">Client</p><p class="font-medium">${o.customer_name}</p></div>
-                                    <div><p class="text-xs text-gray-500">Téléphone</p><p class="font-medium">${o.customer_phone}</p></div>
-                                    <div><p class="text-xs text-gray-500">Ville</p><p class="font-medium">${o.shipping_city}</p></div>
-                                    <div><p class="text-xs text-gray-500">Total</p><p class="font-bold text-blue-600 text-lg">${o.total} ${CONFIG.CURRENCY}</p></div>
-                                </div>
-                                <p class="text-sm text-gray-600 mb-3">${o.shipping_address}</p>
-                                <div class="flex flex-wrap gap-2">
-                                    ${(o.order_items || []).map(item => `
-                                        <span class="px-2 py-1 bg-gray-100 rounded text-xs">${item.product_name} x${item.quantity}</span>
-                                    `).join('')}
+                                
+                                <h3 class="font-semibold text-lg mt-6 mb-4">Prix</h3>
+                                <div class="space-y-2">
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="price" value="all" checked onchange="filterProducts()" class="mr-2 accent-yellow-500">
+                                        <span>Tous les prix</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="price" value="0-100" onchange="filterProducts()" class="mr-2 accent-yellow-500">
+                                        <span>Moins de 100 DH</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="price" value="100-200" onchange="filterProducts()" class="mr-2 accent-yellow-500">
+                                        <span>100 - 200 DH</span>
+                                    </label>
+                                    <label class="flex items-center cursor-pointer">
+                                        <input type="radio" name="price" value="200+" onchange="filterProducts()" class="mr-2 accent-yellow-500">
+                                        <span>Plus de 200 DH</span>
+                                    </label>
                                 </div>
                             </div>
-                            <div class="flex flex-row lg:flex-col gap-2">
-                                <a href="tel:${o.customer_phone}" class="px-4 py-2 bg-blue-600 text-white rounded-xl text-center hover:bg-blue-700 transition text-sm font-medium">📞 Appeler</a>
-                                <a href="https://wa.me/${o.customer_phone.replace(/^0/, '212')}?text=${encodeURIComponent('Bonjour ' + o.customer_name + ', concernant votre commande ' + (o.order_number || o.id))}" target="_blank" class="px-4 py-2 bg-green-500 text-white rounded-xl text-center hover:bg-green-600 transition text-sm font-medium">💬 WhatsApp</a>
-                                <button onclick="confirmOrder('${o.id}')" class="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition text-sm font-medium">✓ Confirmer</button>
-                                <button onclick="cancelOrder('${o.id}')" class="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition text-sm font-medium">✕ Annuler</button>
+                        </aside>
+
+                        <!-- Products Grid -->
+                        <div class="flex-1">
+                            <div class="flex items-center justify-between mb-6">
+                                <h2 class="font-display text-2xl font-bold">Catalogue</h2>
+                                <select onchange="sortProducts(this.value)" class="px-4 py-2 border rounded-lg bg-white">
+                                    <option value="default">Trier par</option>
+                                    <option value="price-asc">Prix croissant</option>
+                                    <option value="price-desc">Prix décroissant</option>
+                                    <option value="name">Nom A-Z</option>
+                                </select>
+                            </div>
+                            <div id="products-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                <!-- Filled by JS -->
                             </div>
                         </div>
                     </div>
-                `).join('');
-            }
-        }
-
-        async function confirmOrder(id) {
-            showLoading('Confirmation...');
-
-            const order = orders.find(o => o.id === id);
-            if (!order) { hideLoading(); return; }
-
-            if (supabaseClient) {
-                try {
-                    await supabaseClient.from('orders').update({
-                        status: 'confirmed',
-                        confirmed_at: new Date().toISOString()
-                    }).eq('id', id);
-                } catch (e) { console.error(e); }
-            }
-
-            order.status = 'confirmed';
-            order.confirmed_at = new Date().toISOString();
-
-            if (CONFIG.GOOGLE_SCRIPT_URL) {
-                try {
-                    await fetch(CONFIG.GOOGLE_SCRIPT_URL, {
-                        method: 'POST',
-                        mode: 'no-cors',
-                        body: JSON.stringify({
-                            action: 'addOrder',
-                            order: {
-                                orderRef: order.order_number,
-                                name: order.customer_name,
-                                phone: order.customer_phone,
-                                address: order.shipping_address,
-                                city: order.shipping_city,
-                                codAmount: order.total,
-                                status: 'Confirmed'
-                            }
-                        })
-                    });
-                } catch (e) { console.error(e); }
-            }
-
-            hideLoading();
-            showToast(`Commande ${order.order_number || id} confirmée!`);
-            updateUI();
-            renderConfirmation();
-        }
-
-        async function cancelOrder(id) {
-            const reason = prompt('Raison de l\'annulation (optionnel):');
-            showLoading('Annulation...');
-
-            if (supabaseClient) {
-                try {
-                    await supabaseClient.from('orders').update({
-                        status: 'cancelled',
-                        cancelled_at: new Date().toISOString(),
-                        cancelled_reason: reason
-                    }).eq('id', id);
-                } catch (e) { console.error(e); }
-            }
-
-            const order = orders.find(o => o.id === id);
-            if (order) order.status = 'cancelled';
-
-            hideLoading();
-            showToast('Commande annulée', 'warning');
-            updateUI();
-            renderConfirmation();
-        }
-
-        // =============================================
-        // ORDER MODAL
-        // =============================================
-        function openOrderModal(id) {
-            const order = orders.find(o => o.id === id);
-            if (!order) return;
-
-            document.getElementById('modal-order-id').textContent = order.order_number || order.id;
-
-            document.getElementById('modal-content').innerHTML = `
-                <div class="grid grid-cols-2 gap-4 mb-6">
-                    <div><p class="text-xs text-gray-500">Client</p><p class="font-semibold">${order.customer_name}</p></div>
-                    <div><p class="text-xs text-gray-500">Téléphone</p><p class="font-semibold">${order.customer_phone}</p></div>
-                    <div><p class="text-xs text-gray-500">Ville</p><p class="font-semibold">${order.shipping_city}</p></div>
-                    <div><p class="text-xs text-gray-500">Total</p><p class="font-bold text-blue-600 text-xl">${order.total} ${CONFIG.CURRENCY}</p></div>
                 </div>
-                <div class="mb-6">
-                    <p class="text-xs text-gray-500 mb-1">Adresse</p>
-                    <p class="bg-gray-50 p-3 rounded-lg">${order.shipping_address}</p>
-                </div>
-                <div class="mb-6">
-                    <p class="text-xs text-gray-500 mb-1">Statut</p>
-                    ${getStatusBadge(order.status)}
-                </div>
-                ${order.tracking_number ? `<div class="mb-6"><p class="text-xs text-gray-500 mb-1">Tracking</p><p class="font-mono text-blue-600">${order.tracking_number}</p></div>` : ''}
-                <div>
-                    <p class="text-xs text-gray-500 mb-2">Produits</p>
-                    <div class="space-y-2">
-                        ${(order.order_items || []).map(item => `
-                            <div class="flex justify-between bg-gray-50 p-3 rounded-lg">
-                                <span>${item.product_name} x${item.quantity}</span>
-                                <span class="font-semibold">${item.unit_price * item.quantity} ${CONFIG.CURRENCY}</span>
-                            </div>
-                        `).join('')}
+            </section>
+        </div>
+
+        <!-- Product Detail Page -->
+        <div id="page-product" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4">
+                    <div id="product-detail" class="grid grid-cols-1 md:grid-cols-2 gap-12">
+                        <!-- Filled by JS -->
                     </div>
                 </div>
-            `;
+            </section>
+        </div>
 
-            let actions = `
-                <a href="tel:${order.customer_phone}" class="px-4 py-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition text-sm font-medium">📞 Appeler</a>
-                <a href="https://wa.me/${order.customer_phone.replace(/^0/, '212')}" target="_blank" class="px-4 py-2 bg-green-500 text-white rounded-xl hover:bg-green-600 transition text-sm font-medium">💬 WhatsApp</a>
-            `;
+        <!-- Cart Page -->
+        <div id="page-cart" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4 max-w-4xl">
+                    <h2 class="font-display text-3xl font-bold mb-8">Votre Panier</h2>
+                    
+                    <div id="cart-empty" class="hidden text-center py-16">
+                        <div class="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">🛒</div>
+                        <h3 class="text-xl font-semibold mb-2">Votre panier est vide</h3>
+                        <p class="text-gray-600 mb-6">Découvrez nos produits et ajoutez-les à votre panier</p>
+                        <button onclick="showPage('catalog')" class="btn-gold px-8 py-3 rounded-full font-semibold">
+                            Voir le Catalogue
+                        </button>
+                    </div>
 
-            if (order.status === 'new') {
-                actions += `
-                    <button onclick="confirmOrder('${order.id}'); closeOrderModal();" class="px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition text-sm font-medium">✓ Confirmer</button>
-                    <button onclick="cancelOrder('${order.id}'); closeOrderModal();" class="px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600 transition text-sm font-medium">✕ Annuler</button>
-                `;
-            }
+                    <div id="cart-content" class="hidden">
+                        <div id="cart-items" class="space-y-4 mb-8">
+                            <!-- Filled by JS -->
+                        </div>
+                        
+                        <div class="bg-white rounded-2xl p-6 shadow-sm">
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-gray-600">Sous-total</span>
+                                <span id="cart-subtotal" class="font-semibold">0 DH</span>
+                            </div>
+                            <div class="flex justify-between items-center mb-4">
+                                <span class="text-gray-600">Livraison</span>
+                                <span id="cart-shipping" class="font-semibold">30 DH</span>
+                            </div>
+                            <div class="border-t pt-4 flex justify-between items-center">
+                                <span class="text-lg font-semibold">Total</span>
+                                <span id="cart-total" class="text-2xl font-bold text-gold">0 DH</span>
+                            </div>
+                            <button onclick="showPage('checkout')" class="w-full btn-gold py-4 rounded-xl font-semibold mt-6">
+                                Commander Maintenant
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-            document.getElementById('modal-actions').innerHTML = actions;
-            document.getElementById('order-modal').classList.remove('hidden');
-        }
+        <!-- Checkout Page -->
+        <div id="page-checkout" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4 max-w-2xl">
+                    <h2 class="font-display text-3xl font-bold mb-8">Finaliser la Commande</h2>
+                    
+                    <form id="checkout-form" onsubmit="submitOrder(event)" class="space-y-6">
+                        <div class="bg-white rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-semibold text-lg mb-4">📦 Informations de Livraison</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium mb-2">Nom complet *</label>
+                                    <input type="text" name="name" required class="w-full px-4 py-3 border rounded-xl" placeholder="Votre nom">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Téléphone *</label>
+                                    <input type="tel" name="phone" required pattern="[0-9]{10}" class="w-full px-4 py-3 border rounded-xl" placeholder="06XXXXXXXX">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium mb-2">Ville *</label>
+                                    <select name="city" required id="checkout-city" class="w-full px-4 py-3 border rounded-xl bg-white">
+                                        <option value="">Choisir une ville</option>
+                                        <!-- Filled by JS from CONFIG.CITIES -->
+                                    </select>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium mb-2">Adresse complète *</label>
+                                    <textarea name="address" required rows="2" class="w-full px-4 py-3 border rounded-xl" placeholder="Rue, numéro, quartier..."></textarea>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <label class="block text-sm font-medium mb-2">Notes (optionnel)</label>
+                                    <textarea name="notes" rows="2" class="w-full px-4 py-3 border rounded-xl" placeholder="Instructions spéciales..."></textarea>
+                                </div>
+                            </div>
+                        </div>
 
-        function closeOrderModal() {
-            document.getElementById('order-modal').classList.add('hidden');
-        }
+                        <div class="bg-white rounded-2xl p-6 shadow-sm">
+                            <h3 class="font-semibold text-lg mb-4">🛒 Résumé de la Commande</h3>
+                            <div id="checkout-items" class="space-y-3 mb-4"></div>
+                            <div class="border-t pt-4 space-y-2">
+                                <div class="flex justify-between"><span>Sous-total</span><span id="checkout-subtotal">0 DH</span></div>
+                                <div class="flex justify-between"><span>Livraison</span><span id="checkout-shipping">30 DH</span></div>
+                                <div class="flex justify-between text-lg font-bold pt-2 border-t">
+                                    <span>Total à payer</span>
+                                    <span id="checkout-total" class="text-gold">0 DH</span>
+                                </div>
+                            </div>
+                        </div>
 
-        // =============================================
-        // SHIPPING
-        // =============================================
-        function renderShipping() {
-            const container = document.getElementById('shipping-table');
-            if (!container) return;
+                        <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center">
+                            <span class="text-2xl mr-3">💰</span>
+                            <div>
+                                <p class="font-semibold text-green-800">Paiement à la Livraison</p>
+                                <p class="text-green-600 text-sm">Vous payez uniquement à la réception</p>
+                            </div>
+                        </div>
 
-            container.innerHTML = shippingLabels.map(l => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 font-medium">${l.label_number}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 bg-purple-100 text-purple-700 rounded-full text-xs capitalize">${l.carrier}</span></td>
-                    <td class="px-6 py-4">${l.orders_count}</td>
-                    <td class="px-6 py-4 font-semibold">${l.total_amount} ${CONFIG.CURRENCY}</td>
-                    <td class="px-6 py-4">${getStatusBadge(l.status)}</td>
-                    <td class="px-6 py-4">${getStatusBadge(l.payment_status)}</td>
-                    <td class="px-6 py-4"><button class="p-2 hover:bg-gray-100 rounded-lg transition">⬇️</button></td>
-                </tr>
-            `).join('');
-        }
+                        <button type="submit" id="submit-btn" class="w-full btn-gold py-4 rounded-xl font-semibold text-lg">
+                            ✓ Confirmer la Commande
+                        </button>
+                    </form>
+                </div>
+            </section>
+        </div>
 
-        async function createShippingLabel() {
-            const confirmed = orders.filter(o => o.status === 'confirmed');
+        <!-- Order Success Page -->
+        <div id="page-success" class="page">
+            <section class="py-20">
+                <div class="container mx-auto px-4 max-w-lg text-center">
+                    <div class="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 text-5xl animate-fadeIn">✓</div>
+                    <h2 class="font-display text-3xl font-bold mb-4">Commande Confirmée!</h2>
+                    <p class="text-gray-600 mb-4">Merci pour votre commande. Vous recevrez un appel de confirmation sous peu.</p>
+                    <div class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+                        <p class="text-sm text-gray-500">Numéro de commande</p>
+                        <p id="success-order-number" class="text-2xl font-bold text-gold">HCX...</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                        <button onclick="showPage('home')" class="btn-gold px-8 py-3 rounded-full font-semibold">Retour à l'Accueil</button>
+                        <button onclick="showPage('tracking')" class="border-2 border-gold text-gold px-8 py-3 rounded-full font-semibold hover:bg-gold hover:text-black transition">Suivre ma Commande</button>
+                    </div>
+                </div>
+            </section>
+        </div>
 
-            if (confirmed.length === 0) {
-                showToast('Aucune commande confirmée', 'warning');
-                return;
-            }
+        <!-- Tracking Page -->
+        <div id="page-tracking" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4 max-w-lg">
+                    <h2 class="font-display text-3xl font-bold mb-8 text-center">Suivi de Commande</h2>
+                    
+                    <div class="bg-white rounded-2xl p-6 shadow-sm mb-8">
+                        <label class="block text-sm font-medium mb-2">Numéro de commande ou téléphone</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="tracking-input" class="flex-1 px-4 py-3 border rounded-xl" placeholder="HCX... ou 06XXXXXXXX">
+                            <button onclick="trackOrder()" class="btn-gold px-6 py-3 rounded-xl font-semibold">Rechercher</button>
+                        </div>
+                    </div>
 
-            showLoading('Création du bordereau...');
-            await new Promise(r => setTimeout(r, 1500));
+                    <div id="tracking-result" class="hidden"></div>
+                </div>
+            </section>
+        </div>
 
-            for (const order of confirmed) {
-                order.status = 'shipped';
-                order.tracking_number = 'S' + Math.random().toString(36).substr(2, 8).toUpperCase();
+        <!-- Contact Page -->
+        <div id="page-contact" class="page">
+            <section class="py-12">
+                <div class="container mx-auto px-4 max-w-2xl">
+                    <h2 class="font-display text-3xl font-bold mb-8 text-center">Contactez-nous</h2>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+                        <a href="#" id="contact-phone-link" class="bg-white rounded-2xl p-6 shadow-sm text-center hover:shadow-md transition">
+                            <div class="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">📞</div>
+                            <h3 class="font-semibold mb-2">Téléphone</h3>
+                            <p class="text-gold" id="contact-phone">0600-000000</p>
+                        </a>
+                        <a href="#" id="contact-whatsapp-link" target="_blank" class="bg-white rounded-2xl p-6 shadow-sm text-center hover:shadow-md transition">
+                            <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">💬</div>
+                            <h3 class="font-semibold mb-2">WhatsApp</h3>
+                            <p class="text-green-600">Discuter maintenant</p>
+                        </a>
+                    </div>
 
-                if (supabaseClient) {
-                    try {
-                        await supabaseClient.from('orders').update({
-                            status: 'shipped',
-                            shipped_at: new Date().toISOString()
-                        }).eq('id', order.id);
-                    } catch (e) { console.error(e); }
-                }
-            }
+                    <div class="bg-white rounded-2xl p-6 shadow-sm">
+                        <h3 class="font-semibold text-lg mb-4">Envoyez-nous un message</h3>
+                        <form id="contact-form" class="space-y-4">
+                            <input type="text" name="name" placeholder="Votre nom" class="w-full px-4 py-3 border rounded-xl" required>
+                            <input type="tel" name="phone" placeholder="Votre téléphone" class="w-full px-4 py-3 border rounded-xl" required>
+                            <textarea name="message" rows="4" placeholder="Votre message" class="w-full px-4 py-3 border rounded-xl" required></textarea>
+                            <button type="submit" class="w-full btn-gold py-3 rounded-xl font-semibold">Envoyer</button>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </main>
 
-            const newLabel = {
-                id: Date.now().toString(),
-                label_number: 'BL' + Date.now().toString().slice(-6),
-                carrier: 'digylog',
-                orders_count: confirmed.length,
-                total_amount: confirmed.reduce((s, o) => s + o.total, 0),
-                status: 'completed',
-                payment_status: 'unpaid'
-            };
+    <!-- Footer -->
+    <footer class="bg-black text-white py-12 mt-12">
+        <div class="container mx-auto px-4">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+                <div>
+                    <div class="flex items-center space-x-2 mb-4">
+                        <div class="w-10 h-10 bg-gold rounded-full flex items-center justify-center text-black font-bold">H</div>
+                        <span class="font-display text-xl font-bold" id="footer-store-name">Hichoux Store</span>
+                    </div>
+                    <p class="text-gray-400 text-sm">Votre destination pour des parfums authentiques au Maroc.</p>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Liens Rapides</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li><a href="#" onclick="showPage('home')" class="hover:text-gold">Accueil</a></li>
+                        <li><a href="#" onclick="showPage('catalog')" class="hover:text-gold">Catalogue</a></li>
+                        <li><a href="#" onclick="showPage('tracking')" class="hover:text-gold">Suivi Commande</a></li>
+                        <li><a href="#" onclick="showPage('contact')" class="hover:text-gold">Contact</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Contact</h4>
+                    <ul class="space-y-2 text-gray-400 text-sm">
+                        <li>📞 <span id="footer-phone">0600-000000</span></li>
+                        <li>✉️ <span id="footer-email">contact@hichouxstore.ma</span></li>
+                        <li>📍 <span id="footer-address">Casablanca, Maroc</span></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="font-semibold mb-4">Newsletter</h4>
+                    <p class="text-gray-400 text-sm mb-4">Recevez nos offres exclusives</p>
+                    <div class="flex">
+                        <input type="email" placeholder="Votre email" class="flex-1 px-4 py-2 rounded-l-lg text-black">
+                        <button class="bg-gold text-black px-4 py-2 rounded-r-lg font-semibold">OK</button>
+                    </div>
+                </div>
+            </div>
+            <div class="border-t border-gray-800 pt-8 text-center text-gray-500 text-sm">
+                <p>© 2025 <span id="footer-store-name-2">Hichoux Store</span>. Tous droits réservés.</p>
+            </div>
+        </div>
+    </footer>
 
-            shippingLabels.unshift(newLabel);
+    <!-- WhatsApp Float Button -->
+    <a href="#" id="whatsapp-float" target="_blank" class="whatsapp-float">
+        <svg class="w-7 h-7 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+    </a>
 
-            hideLoading();
-            showToast(`Bordereau créé: ${newLabel.label_number}`);
-            updateUI();
-            renderShipping();
-        }
-
-        // =============================================
-        // PRODUCTS
-        // =============================================
-        function renderProducts() {
-            document.getElementById('products-count').textContent = `${products.length} produits`;
-
-            const container = document.getElementById('products-table');
-            if (!container) return;
-
-            container.innerHTML = products.map(p => `
-                <tr class="hover:bg-gray-50">
-                    <td class="px-6 py-4 font-medium">${p.name}</td>
-                    <td class="px-6 py-4 text-gray-600 font-mono text-sm">${p.sku}</td>
-                    <td class="px-6 py-4"><span class="px-2 py-1 bg-gray-100 rounded-full text-xs">${p.category?.name || '-'}</span></td>
-                    <td class="px-6 py-4 font-semibold">${p.price} ${CONFIG.CURRENCY}</td>
-                    <td class="px-6 py-4 ${p.stock < 20 ? 'text-red-600 font-semibold' : 'text-green-600'}">${p.stock}</td>
-                    <td class="px-6 py-4"><button class="text-blue-600 hover:underline text-sm">Modifier</button></td>
-                </tr>
-            `).join('');
-        }
-
-        // =============================================
-        // SETTINGS
-        // =============================================
-        function populateSettings() {
-            document.getElementById('settings-supabase-url').value = CONFIG.SUPABASE_URL || 'Non configuré';
-
-            const statusEl = document.getElementById('settings-supabase-status');
-            if (supabaseClient) {
-                statusEl.textContent = '✓ Connecté';
-                statusEl.className = 'px-4 py-2.5 bg-green-100 text-green-700 rounded-xl';
-            } else {
-                statusEl.textContent = '✕ Non connecté';
-                statusEl.className = 'px-4 py-2.5 bg-red-100 text-red-700 rounded-xl';
-            }
-        }
-
-        function saveSettings() {
-            showToast('Paramètres sauvegardés!');
-        }
-
-        async function syncToGoogleSheet() {
-            if (!CONFIG.GOOGLE_SCRIPT_URL) {
-                showToast('URL Google Apps Script non configurée', 'warning');
-                return;
-            }
-
-            const confirmed = orders.filter(o => o.status === 'confirmed');
-            if (confirmed.length === 0) {
-                showToast('Aucune commande à synchroniser', 'info');
-                return;
-            }
-
-            showLoading('Synchronisation...');
-
-            try {
-                await fetch(CONFIG.GOOGLE_SCRIPT_URL, {
-                    method: 'POST',
-                    mode: 'no-cors',
-                    body: JSON.stringify({
-                        action: 'addOrders',
-                        orders: confirmed.map(o => ({
-                            orderRef: o.order_number,
-                            name: o.customer_name,
-                            phone: o.customer_phone,
-                            address: o.shipping_address,
-                            city: o.shipping_city,
-                            codAmount: o.total,
-                            status: 'Confirmed'
-                        }))
-                    })
-                });
-
-                document.getElementById('last-sync').textContent = 'Last sync: ' + new Date().toLocaleString('fr-FR');
-                showToast(`${confirmed.length} commandes synchronisées`);
-            } catch (e) {
-                showToast('Erreur de synchronisation', 'error');
-            }
-
-            hideLoading();
-        }
-
-        // Close modal on escape
-        document.addEventListener('keydown', e => {
-            if (e.key === 'Escape') closeOrderModal();
-        });
-
-        // Close modal on outside click
-        document.getElementById('order-modal')?.addEventListener('click', function(e) {
-            if (e.target === this) closeOrderModal();
-        });
-    </script>
+    <!-- Scripts -->
+    <script src="../config/config.js"></script>
+    <script src="../config/supabase.js"></script>
+    <script src="js/app.js"></script>
 </body>
 </html>
